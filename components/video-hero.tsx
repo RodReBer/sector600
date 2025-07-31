@@ -13,7 +13,7 @@ export function VideoHero() {
       {/* Video Background */}
       <div className="absolute inset-0">
         <video className="w-full h-full object-cover" autoPlay muted loop playsInline>
-          <source src="/placeholder-video.mp4" type="video/mp4" />
+          <source src="/287510_tiny.mp4" type="video/mp4" />
         </video>
         <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-black/60"></div>
       </div>
