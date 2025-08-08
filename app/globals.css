@@ -37,6 +37,9 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  
+  /* Custom font family */
+  --font-proxima: 'proxima-nova', 'Inter', sans-serif;
 }
 
 .dark {
@@ -111,6 +114,9 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  
+  /* Custom font family */
+  --font-proxima: 'proxima-nova', 'Inter', sans-serif;
 }
 
 @layer base {
@@ -119,10 +125,23 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-proxima);
   }
 }
 
 @layer utilities {
+  .font-proxima {
+    font-family: var(--font-proxima);
+  }
+
+  /* Text Outline Effect for Banner */
+  .text-outline-red {
+    color: transparent;
+    -webkit-text-stroke: 3px #ffffff;
+    text-stroke: 3px #ffffff;
+    font-weight: bold;
+  }
+
   .animate-marquee {
     animation: marquee 25s linear infinite;
   }
@@ -160,6 +179,16 @@
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
+  }
+
+  /* Scrolling Banner Styles */
+  .scrolling-banner-wrapper {
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  .scrolling-banner {
+    display: inline-block;
   }
 
   @keyframes marquee {

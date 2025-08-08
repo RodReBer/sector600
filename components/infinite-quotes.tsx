@@ -1,39 +1,61 @@
 "use client"
 
-import { useEffect, useState } from "react"
-
-const quotes = [
-  "La política debe ser el arte de hacer posible lo necesario - Robert Silva",
-  "Un Uruguay próspero es un Uruguay que no deja a nadie atrás - Sector 600",
-  "La educación es la herramienta más poderosa para cambiar el mundo - Robert Silva",
-  "Trabajamos por un país donde cada uruguayo pueda cumplir sus sueños - Sector 600",
-  "La transparencia no es una opción, es una obligación - Robert Silva",
-  "El diálogo es el camino hacia las mejores soluciones - Sector 600",
-]
+import { useEffect, useRef } from "react"
 
 export function InfiniteQuotes() {
-  const [currentQuote, setCurrentQuote] = useState(0)
+  const bannerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentQuote((prev) => (prev + 1) % quotes.length)
-    }, 2000)
+    function createScrollingBanner(wrapperSelector: string, contentSelector: string, speed = 2) {
+      const bannerContainer = document.querySelector(wrapperSelector) as HTMLElement
+      const bannerContent = bannerContainer?.querySelector(contentSelector) as HTMLElement
+      
+      if (!bannerContainer || !bannerContent) {
+        console.error('Invalid container or content selectors.')
+        return
+      }
 
-    return () => clearInterval(interval)
+      // Prepare widths and clone content for seamless scroll
+      let contentWidth = bannerContent.offsetWidth
+      bannerContainer.style.overflow = 'hidden'
+      bannerContainer.style.whiteSpace = 'nowrap'
+      bannerContainer.style.marginLeft = `-${bannerContainer.offsetWidth}px`
+      bannerContainer.style.width = `${(bannerContainer.offsetWidth * 2) + contentWidth}px`
+      let containerWidth = bannerContainer.offsetWidth + contentWidth
+
+      // Clone content until it fills the container for infinite scroll
+      while (contentWidth < containerWidth * 2) {
+        const clonedNode = bannerContent.cloneNode(true) as HTMLElement
+        bannerContainer.appendChild(clonedNode)
+        contentWidth += clonedNode.offsetWidth
+      }
+
+      let scrollPosition = 0
+      function scroll() {
+        scrollPosition += speed
+        // Adjust the speed dynamically
+        bannerContainer.style.transform = `translateX(${scrollPosition}px)`
+        // Reset scroll position for infinite scroll
+        if (scrollPosition >= ((containerWidth / 2) - bannerContent.offsetWidth)) {
+          scrollPosition = -((containerWidth % bannerContent.offsetWidth) - 81)
+        }
+        requestAnimationFrame(scroll)
+      }
+      scroll()
+    }
+
+    // Initialize the banner
+    createScrollingBanner('#banner1', '.scrolling-banner', 1)
   }, [])
 
-  // Duplicamos las frases para crear el efecto infinito
-  const duplicatedQuotes = [...quotes, ...quotes, ...quotes]
-
   return (
-    <section className="bg-red-600 py-4 overflow-hidden">
-      <div className="relative">
-        <div className="flex animate-scroll whitespace-nowrap">
-          {duplicatedQuotes.map((quote, index) => (
-            <span key={index} className="text-white text-lg font-medium mx-8 inline-block">
-              {quote}
-            </span>
-          ))}
+    <section className="bg-red-600 py-6 overflow-hidden">
+      <div id="banner1" className="scrolling-banner-wrapper">
+        <div className="scrolling-banner">
+          <h3 className="text-4xl md:text-6xl font-bold">
+            <span className="text-white mr-8">TE NECESITAMOS </span>
+            <span className="text-outline-red mr-8">TE NECESITAMOS </span>
+          </h3>
         </div>
       </div>
     </section>
