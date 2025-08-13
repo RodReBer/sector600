@@ -1,16 +1,18 @@
-"use client"
+"use client";
 
-import type React from "react"
-
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
-import { Lightbulb, Send, Users, ThumbsUp, MessageSquare, TrendingUp } from "lucide-react"
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { collection, addDoc, query, orderBy, getDocs, where } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Alert } from "@/components/ui/alert";
+import { Lightbulb, Send, Users, ThumbsUp, MessageSquare, TrendingUp, Star } from "lucide-react";
 
 const categorias = [
   "Educación",
@@ -27,29 +29,16 @@ const categorias = [
   "Participación Ciudadana",
 ]
 
-const propuestasRecientes = [
-  {
-    titulo: "Ciclovías conectadas en toda la ciudad",
-    autor: "Juan Pérez",
-    categoria: "Transporte",
-    votos: 234,
-    fecha: "Hace 2 días",
-  },
-  {
-    titulo: "Huertos comunitarios en espacios públicos",
-    autor: "María Silva",
-    categoria: "Medio Ambiente",
-    votos: 189,
-    fecha: "Hace 3 días",
-  },
-  {
-    titulo: "Wifi gratuito en plazas y parques",
-    autor: "Carlos López",
-    categoria: "Tecnología",
-    votos: 156,
-    fecha: "Hace 5 días",
-  },
-]
+// Interface for propuestas
+interface Propuesta {
+  id: string;
+  titulo: string;
+  descripcion: string;
+  categoria: string;
+  nombre: string;
+  fecha: Date;
+  destacada?: boolean;
+}
 
 export default function PlataformaCiudadanaPage() {
   const [formData, setFormData] = useState({
@@ -63,13 +52,83 @@ export default function PlataformaCiudadanaPage() {
     email: "",
     departamento: "",
     telefono: "",
-  })
+  });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    console.log("Propuesta enviada:", formData)
-    // Aquí iría la lógica de envío
-  }
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [propuestasDestacadas, setPropuestasDestacadas] = useState<Propuesta[]>([]);
+  const router = useRouter();
+  
+  useEffect(() => {
+    const loadPropuestasDestacadas = async () => {
+      try {
+        const q = query(
+          collection(db, "propuestas"), 
+          where("destacada", "==", true),
+          orderBy("fecha", "desc")
+        );
+        const querySnapshot = await getDocs(q);
+        const propuestasData = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          fecha: doc.data().fecha.toDate(),
+        })) as Propuesta[];
+        setPropuestasDestacadas(propuestasData);
+      } catch (error) {
+        console.error("Error loading propuestas destacadas:", error);
+      }
+    };
+
+    loadPropuestasDestacadas();
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setError("");
+
+    try {
+      await addDoc(collection(db, "propuestas"), {
+        titulo: formData.titulo,
+        descripcion: formData.descripcion,
+        fecha: new Date(),
+        // Añadiendo el resto de los campos
+        categoria: formData.categoria,
+        justificacion: formData.justificacion,
+        beneficiarios: formData.beneficiarios,
+        recursos: formData.recursos,
+        nombre: formData.nombre,
+        email: formData.email,
+        departamento: formData.departamento,
+        telefono: formData.telefono,
+      });
+      
+      setSuccess(true);
+      // Reset form
+      setFormData({
+        titulo: "",
+        categoria: "",
+        descripcion: "",
+        justificacion: "",
+        beneficiarios: "",
+        recursos: "",
+        nombre: "",
+        email: "",
+        departamento: "",
+        telefono: "",
+      });
+      
+      // Redirect after 2 seconds
+      setTimeout(() => {
+        router.push("/propuestas");
+      }, 2000);
+    } catch (error) {
+      setError("Error al enviar la propuesta. Por favor, intente nuevamente.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 pt-20">
@@ -263,8 +322,24 @@ export default function PlataformaCiudadanaPage() {
                     </div>
                   </div>
 
-                  <Button type="submit" className="w-full bg-red-600 hover:bg-red-700">
-                    Enviar Propuesta
+                  {error && (
+                    <Alert variant="destructive" className="mb-4">
+                      {error}
+                    </Alert>
+                  )}
+
+                  {success && (
+                    <Alert className="mb-4 bg-green-50 text-green-800 border-green-200">
+                      ¡Propuesta enviada con éxito! Serás redirigido a la página de propuestas.
+                    </Alert>
+                  )}
+
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-red-600 hover:bg-red-700"
+                    disabled={submitting}
+                  >
+                    {submitting ? "Enviando..." : "Enviar Propuesta"}
                   </Button>
                 </form>
               </CardContent>
@@ -320,7 +395,42 @@ export default function PlataformaCiudadanaPage() {
               </CardContent>
             </Card>
 
-            {/* Propuestas Recientes */}
+            {/* Propuestas Destacadas */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Star className="h-5 w-5 text-yellow-500" />
+                  Propuestas Destacadas
+                </CardTitle>
+                <CardDescription>
+                  Las propuestas más relevantes seleccionadas por nuestro equipo
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {propuestasDestacadas.map((propuesta) => (
+                    <div key={propuesta.id} className="border-b pb-4 last:border-0 last:pb-0">
+                      <h4 className="font-medium text-gray-900 mb-1">{propuesta.titulo}</h4>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Badge variant="secondary">{propuesta.categoria}</Badge>
+                        <span className="text-sm text-gray-500">
+                          {propuesta.fecha.toLocaleDateString()}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 line-clamp-2">{propuesta.descripcion}</p>
+                      <p className="text-sm text-gray-500 mt-1">Por: {propuesta.nombre}</p>
+                    </div>
+                  ))}
+                  {propuestasDestacadas.length === 0 && (
+                    <p className="text-sm text-gray-500 text-center py-4">
+                      No hay propuestas destacadas en este momento
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Cómo funciona */}
             <Card>
               <CardHeader>
                 <CardTitle>Propuestas Recientes</CardTitle>

@@ -1,128 +1,240 @@
-import Link from "next/link"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { BookOpen, Users, Briefcase, Heart, Home, Leaf, ArrowRight } from "lucide-react"
+"use client";
 
-const ejesProgramaticos = [
-  {
-    title: "Educación de Calidad",
-    description: "Revolución educativa para preparar a nuestros jóvenes para el futuro",
-    icon: BookOpen,
-    color: "bg-blue-500",
-    proposals: ["Educación técnica avanzada", "Conectividad en todas las escuelas", "Formación docente continua"],
-  },
-  {
-    title: "Desarrollo Rural",
-    description: "Fortalecimiento del interior con infraestructura y oportunidades",
-    icon: Leaf,
-    color: "bg-green-500",
-    proposals: ["Caminos rurales", "Internet rural", "Apoyo a productores"],
-  },
-  {
-    title: "Empleo y Economía",
-    description: "Generación de trabajo digno y crecimiento económico sostenible",
-    icon: Briefcase,
-    color: "bg-purple-500",
-    proposals: ["Incentivos a PyMEs", "Capacitación laboral", "Emprendedurismo joven"],
-  },
-  {
-    title: "Salud Integral",
-    description: "Sistema de salud accesible y de calidad para todos los uruguayos",
-    icon: Heart,
-    color: "bg-red-500",
-    proposals: ["Telemedicina rural", "Prevención y promoción", "Salud mental"],
-  },
-  {
-    title: "Vivienda Digna",
-    description: "Acceso a la vivienda para todas las familias uruguayas",
-    icon: Home,
-    color: "bg-orange-500",
-    proposals: ["Créditos accesibles", "Cooperativas de vivienda", "Mejoramiento de barrios"],
-  },
-  {
-    title: "Participación Ciudadana",
-    description: "Democracia participativa y transparencia en la gestión",
-    icon: Users,
-    color: "bg-indigo-500",
-    proposals: ["Presupuesto participativo", "Gobierno abierto", "Consultas ciudadanas"],
-  },
-]
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { collection, query, orderBy, getDocs } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Lightbulb, TrendingUp, MapPin } from "lucide-react";
+
+interface Propuesta {
+  id: string;
+  titulo: string;
+  descripcion: string;
+  fecha: Date;
+  categoria: string;
+  departamento: string;
+  nombre: string;
+  justificacion: string;
+  beneficiarios: string;
+}
+
+interface CategoryStat {
+  categoria: string;
+  count: number;
+}
+
+interface DepartmentStat {
+  departamento: string;
+  count: number;
+}
 
 export default function PropuestasPage() {
+  const [propuestas, setPropuestas] = useState<Propuesta[]>([]);
+  const [categoryStats, setCategoryStats] = useState<CategoryStat[]>([]);
+  const [departmentStats, setDepartmentStats] = useState<DepartmentStat[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const loadPropuestas = async () => {
+      try {
+        const q = query(collection(db, "propuestas"), orderBy("fecha", "desc"));
+        const querySnapshot = await getDocs(q);
+        const propuestasData = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          fecha: doc.data().fecha.toDate(),
+        })) as Propuesta[];
+        
+        setPropuestas(propuestasData);
+
+        // Calculate statistics
+        const categories: { [key: string]: number } = {};
+        const departments: { [key: string]: number } = {};
+
+        propuestasData.forEach(propuesta => {
+          if (propuesta.categoria) {
+            categories[propuesta.categoria] = (categories[propuesta.categoria] || 0) + 1;
+          }
+          if (propuesta.departamento) {
+            departments[propuesta.departamento] = (departments[propuesta.departamento] || 0) + 1;
+          }
+        });
+
+        const categoryStats = Object.entries(categories).map(([categoria, count]) => ({
+          categoria,
+          count,
+        })).sort((a, b) => b.count - a.count);
+
+        const departmentStats = Object.entries(departments).map(([departamento, count]) => ({
+          departamento,
+          count,
+        })).sort((a, b) => b.count - a.count);
+
+        setCategoryStats(categoryStats);
+        setDepartmentStats(departmentStats);
+      } catch (error) {
+        setError("Error al cargar las propuestas");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadPropuestas();
+  }, []);
+
   return (
     <div className="min-h-screen bg-gray-50 pt-20">
       <div className="container mx-auto px-4 py-12">
         {/* Header */}
         <div className="text-center mb-16">
           <Badge className="mb-4 bg-red-100 text-red-800">Propuestas</Badge>
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">Nuestro Programa de Gobierno</h1>
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+            Propuestas Ciudadanas
+          </h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Un programa integral para transformar el Uruguay, construido con la participación de todos los sectores de
-            la sociedad.
+            Conocé las propuestas enviadas por la ciudadanía y sé parte del cambio que queremos para Uruguay.
           </p>
         </div>
 
-        {/* Ejes Programáticos */}
-        <div className="mb-16">
-          <h2 className="text-3xl font-bold text-gray-900 text-center mb-12">Ejes Programáticos</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {ejesProgramaticos.map((eje, index) => (
-              <Card key={index} className="hover:shadow-lg transition-all duration-300 group">
-                <CardHeader>
-                  <div className={`w-16 h-16 rounded-full ${eje.color} flex items-center justify-center mb-4`}>
-                    <eje.icon className="h-8 w-8 text-white" />
-                  </div>
-                  <CardTitle className="text-xl group-hover:text-red-600 transition-colors">{eje.title}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-600 mb-4">{eje.description}</p>
-                  <div className="space-y-2 mb-6">
-                    {eje.proposals.map((proposal, idx) => (
-                      <div key={idx} className="flex items-center text-sm text-gray-500">
-                        <div className="w-2 h-2 bg-red-400 rounded-full mr-2"></div>
-                        {proposal}
+        {/* Statistics */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <Lightbulb className="h-6 w-6 text-blue-600" />
+                </div>
+                <div className="text-2xl font-bold text-gray-900 mb-1">{propuestas.length}</div>
+                <div className="text-gray-600">Propuestas Recibidas</div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <TrendingUp className="h-6 w-6 text-green-600" />
+                </div>
+                <div className="text-2xl font-bold text-gray-900 mb-1">
+                  {categoryStats[0]?.categoria || "N/A"}
+                </div>
+                <div className="text-gray-600">Categoría más Popular</div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <MapPin className="h-6 w-6 text-purple-600" />
+                </div>
+                <div className="text-2xl font-bold text-gray-900 mb-1">
+                  {departmentStats[0]?.departamento || "N/A"}
+                </div>
+                <div className="text-gray-600">Departamento más Activo</div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="text-center mb-12">
+          <Button asChild>
+            <Link href="/participa/plataforma">
+              Enviar mi propuesta
+            </Link>
+          </Button>
+        </div>
+
+        {/* Proposals List */}
+        {loading ? (
+          <div className="text-center">
+            <p className="text-gray-600">Cargando propuestas...</p>
+          </div>
+        ) : error ? (
+          <div className="text-center">
+            <p className="text-red-600">{error}</p>
+          </div>
+        ) : (
+          <div className="grid gap-6">
+            {propuestas.map((propuesta) => (
+              <Card key={propuesta.id} className="hover:shadow-lg transition-all duration-300">
+                <CardContent className="p-6">
+                  <div>
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h3 className="text-xl font-semibold mb-2">{propuesta.titulo}</h3>
+                        <div className="flex gap-2 mb-2">
+                          <Badge variant="secondary">{propuesta.categoria}</Badge>
+                          <Badge variant="outline">{propuesta.departamento}</Badge>
+                        </div>
                       </div>
-                    ))}
+                      <div className="text-sm text-gray-500">
+                        {propuesta.fecha.toLocaleDateString()}
+                      </div>
+                    </div>
+                    <p className="text-gray-600 mb-4">{propuesta.descripcion}</p>
+                    {propuesta.justificacion && (
+                      <div className="mb-4">
+                        <h4 className="font-medium mb-1">Justificación:</h4>
+                        <p className="text-gray-600">{propuesta.justificacion}</p>
+                      </div>
+                    )}
+                    {propuesta.beneficiarios && (
+                      <div className="mb-4">
+                        <h4 className="font-medium mb-1">Beneficiarios:</h4>
+                        <p className="text-gray-600">{propuesta.beneficiarios}</p>
+                      </div>
+                    )}
+                    <div className="text-sm text-gray-500">
+                      Propuesta por: {propuesta.nombre}
+                    </div>
                   </div>
-                  <Button
-                    variant="outline"
-                    className="w-full group-hover:bg-red-600 group-hover:text-white bg-transparent"
-                  >
-                    Ver detalles
-                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {/* Category Statistics */}
+        <div className="mt-12">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">Estadísticas por Categoría</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {categoryStats.map((stat) => (
+              <Card key={stat.categoria}>
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-center">
+                    <div className="font-medium">{stat.categoria}</div>
+                    <Badge>{stat.count} propuestas</Badge>
+                  </div>
                 </CardContent>
               </Card>
             ))}
           </div>
         </div>
 
-        {/* Call to Action */}
-        <Card className="bg-red-50 border-red-200">
-          <CardContent className="text-center py-12">
-            <h3 className="text-2xl font-bold text-red-800 mb-4">Programa Completo</h3>
-            <p className="text-red-700 mb-6 max-w-2xl mx-auto">
-              Descarga nuestro programa de gobierno completo con todas las propuestas detalladas para transformar el
-              Uruguay.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button asChild className="bg-red-600 hover:bg-red-700">
-                <Link href="/propuestas/ejes">
-                  Ver Programa Completo
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
-              <Button
-                asChild
-                variant="outline"
-                className="border-red-600 text-red-600 hover:bg-red-600 hover:text-white bg-transparent"
-              >
-                <Link href="/participa/plataforma">Proponer Ideas</Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Department Statistics */}
+        <div className="mt-12">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">Estadísticas por Departamento</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {departmentStats.map((stat) => (
+              <Card key={stat.departamento}>
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-center">
+                    <div className="font-medium">{stat.departamento}</div>
+                    <Badge>{stat.count} propuestas</Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
-  )
+  );
 }

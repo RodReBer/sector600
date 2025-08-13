@@ -24,10 +24,6 @@ const navigation = [
   {
     name: "Propuestas",
     href: "/propuestas",
-    submenu: [
-      { name: "Ejes programáticos", href: "/propuestas/ejes" },
-      { name: "Propuestas destacadas", href: "/propuestas/destacadas" },
-    ],
   },
   {
     name: "Participá",
@@ -104,7 +100,7 @@ export function Header() {
               <div key={item.name} className="relative">
                 {item.submenu ? (
                   <div
-                    className="relative"
+                    className="relative group"
                     onMouseEnter={() => setActiveDropdown(item.name)}
                     onMouseLeave={() => setActiveDropdown(null)}
                   >
@@ -114,7 +110,8 @@ export function Header() {
                     </button>
 
                     {activeDropdown === item.name && (
-                      <div className="absolute top-full left-0 mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-100 py-2 z-50">
+                      <div className="absolute top-full left-0 w-56 pt-2">
+                        <div className="bg-white rounded-lg shadow-lg border border-gray-100 py-2 z-50">
                         {item.submenu.map((subitem) => (
                           <Link
                             key={subitem.name}
@@ -124,6 +121,7 @@ export function Header() {
                             {subitem.name}
                           </Link>
                         ))}
+                        </div>
                       </div>
                     )}
                   </div>
