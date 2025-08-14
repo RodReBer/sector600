@@ -56,25 +56,75 @@ Push a tu rama principal y Netlify desplegará automáticamente.
 1. Ejecuta `npm run build` localmente
 2. Arrastra la carpeta `out` a la interfaz de despliegue manual de Netlify
 
-## Manejo de Errores
+## Características del Manejo de Errores
 
-El sitio está configurado con:
+El sitio está configurado con mejoras significativas para robustez:
 
-1. Inicialización robusta de Firebase (solo cliente)
-2. Manejo de errores en carga de datos
-3. Validación de datos de Firestore
-4. Página 404 personalizada
+1. **Inicialización robusta de Firebase**:
+   - Solo se inicializa en el cliente
+   - Utiliza un patrón singleton global para evitar inicializaciones múltiples
+   - Manejo de errores por servicio (Firestore, Auth, Analytics)
+   - Timeout para evitar bloqueos en caso de problemas de conexión
+
+2. **Manejo de errores en carga de datos**:
+   - Validación de datos de Firestore con valores fallback
+   - Mensajes de error amigables al usuario
+   - Estados de carga visuales durante operaciones
+   - Aislamiento de errores para evitar que un error en una parte afecte toda la aplicación
+
+3. **UI Resiliente**:
+   - Componentes que manejan valores nulos o indefinidos
+   - Estados de carga y error para todas las operaciones
+   - Botones de reintentar para recuperarse de errores
+
+4. **Navegación y SEO**:
+   - Página 404 personalizada
+   - Redirecciones configuradas para SPA
+   - Manejo adecuado de rutas dinámicas
 
 ## Solución de Problemas Comunes
 
-Si experimentas problemas de conexión con Firebase:
+### Problemas de Conexión con Firebase:
 
-1. **Verifica las variables de entorno**: Asegúrate que estén configuradas correctamente en Netlify
-2. **Limpia la caché del navegador**: Los datos obsoletos pueden causar problemas
-3. **Revisa la consola del navegador**: Para identificar errores específicos
-4. **Revisa la configuración de Firebase**: Asegúrate que tu proyecto de Firebase tiene habilitadas las APIs necesarias
+1. **Verifica las variables de entorno**:
+   - Asegúrate que estén configuradas correctamente en Netlify
+   - Confirma que coinciden exactamente con tu proyecto de Firebase
+   - Verifica que empiezan con `NEXT_PUBLIC_`
 
-Si experimentas problemas de despliegue:
+2. **Problemas del Navegador**:
+   - Limpia la caché del navegador
+   - Prueba en modo incógnito
+   - Verifica la consola del navegador para errores específicos
 
-1. **Revisa los logs de build en Netlify**: Para identificar errores en el proceso de build
-2. **Asegúrate de que la versión de Node es 20+**: Configura `NODE_VERSION=20` en las variables de entorno de Netlify
+3. **Firestore y Permisos**:
+   - Asegúrate que las reglas de seguridad de Firestore permiten las operaciones
+   - Verifica que tu proyecto de Firebase tiene habilitadas las APIs necesarias
+   - Confirma que tu plan de Firebase permite el volumen de operaciones
+
+### Problemas de Despliegue:
+
+1. **Errores de Build**:
+   - Revisa los logs de build en Netlify para identificar errores específicos
+   - Asegúrate que la versión de Node es 20+ (`NODE_VERSION=20` en variables de entorno)
+   - Verifica que `next.config.mjs` tiene la configuración correcta para export estático
+
+2. **Errores de Runtime**:
+   - Errores 404: Verifica la configuración de redirecciones en `netlify.toml`
+   - Páginas en blanco: Probablemente errores de JavaScript, revisa la consola
+   - Datos no cargan: Verifica la inicialización de Firebase y las variables de entorno
+
+## Mejores Prácticas
+
+1. **Despliegues Progresivos**:
+   - Utiliza ramas de desarrollo antes de desplegar a producción
+   - Habilita despliegues de preview en Netlify
+
+2. **Monitoreo**:
+   - Configura alertas en Netlify para fallos de build
+   - Utiliza Firebase Analytics para monitorear el uso
+   - Revisa regularmente los logs de consola
+
+3. **Mantenimiento**:
+   - Actualiza regularmente las dependencias con `npm update`
+   - Monitorea las cuotas y uso de Firebase
+   - Haz pruebas periódicas de todos los flujos críticos
