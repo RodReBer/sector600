@@ -17,6 +17,7 @@ export default function HomePage() {
       {/* Hero principal con video */}
       <VideoHero />
       
+      <FeaturedNews />
       {/* Hero interactivo con typewriter */}
       <InteractiveHero />
       
@@ -26,7 +27,6 @@ export default function HomePage() {
       <InfiniteQuotes />
       <ActionCards />
       <QuickAccess />
-      <FeaturedNews />
       <CallToAction />
     </div>
   )

@@ -103,7 +103,7 @@ export function InteractiveHero() {
           </motion.p>
 
           {/* Características interactivas */}
-          <motion.div
+          {/* <motion.div
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 2.5 }}
@@ -133,11 +133,11 @@ export function InteractiveHero() {
                   {feature.description}
                 </p>
                 
-                {/* Efecto de brillo al hover */}
                 <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-red-400/0 via-red-400/5 to-red-400/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               </motion.div>
             ))}
-          </motion.div>
+          </motion.div> */}
+
         </div>
       </div>
     </section>

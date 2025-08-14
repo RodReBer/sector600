@@ -1,10 +1,25 @@
 [build]
-  command = "npm run build"
-  publish = ".next"
+  command = "next build"
+  publish = "out"
 
 [build.environment]
   NEXT_TELEMETRY_DISABLED = "1"
   NODE_VERSION = "20"
+  NEXT_PUBLIC_ENVIRONMENT = "production"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+
+# Handle client-side routes in SPA mode
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  force = false
+  conditions = {Role = ["admin"]}
+
+# Normal page not found handling
+[[redirects]]
+  from = "/*"
+  to = "/404"
+  status = 404

@@ -71,62 +71,125 @@ export default function PlataformaCiudadanaPage() {
   useEffect(() => {
     const initializeFirestore = async () => {
       if (typeof window === 'undefined') return;
-
-      if (!firestore) {
-        console.error('Firestore is not initialized. Check your Firebase configuration.');
+      
+      // Set a timeout to ensure we don't keep users waiting too long
+      const timeoutId = setTimeout(() => {
+        if (isLoading) {
+          console.log('Firebase initialization timed out');
+          setIsLoading(false);
+        }
+      }, 5000); // 5 second timeout
+      
+      try {
+        // Use the firestore instance directly
+        if (firestore) {
+          setDb(firestore);
+          setIsLoading(false);
+          clearTimeout(timeoutId);
+        } else {
+          console.error('Firestore is not initialized');
+          setError('Error de conexión con la base de datos. Por favor, inténtelo más tarde.');
+          setIsLoading(false);
+        }
+      } catch (err) {
+        console.error('Error initializing Firestore:', err);
         setError('Error de conexión con la base de datos. Por favor, inténtelo más tarde.');
         setIsLoading(false);
-        return;
+        clearTimeout(timeoutId);
       }
-
-      setDb(firestore);
-      setIsLoading(false);
     };
 
     initializeFirestore();
+    
+    // Clean up function
+    return () => {
+      setIsLoading(false);
+    };
   }, []);
   
   useEffect(() => {
     const loadPropuestas = async () => {
       if (!db) {
-        console.error("Firestore is not initialized");
-        setError("Error: Base de datos no inicializada");
-        setIsLoading(false);
-        return;
+        console.log("Waiting for Firestore to initialize...");
+        return; // We'll handle error state separately
       }
 
       try {
-        setIsLoading(true);
-        // Load destacadas
-        const qDestacadas = query(
-          collection(db, "propuestas"), 
-          where("destacada", "==", true),
-          orderBy("fecha", "desc")
-        );
-        const snapshotDestacadas = await getDocs(qDestacadas);
-        const propuestasDestacadasData = snapshotDestacadas.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          fecha: doc.data().fecha.toDate(),
-        })) as Propuesta[];
-        setPropuestasDestacadas(propuestasDestacadasData);
+        // Load destacadas - with error handling for each step
+        try {
+          const qDestacadas = query(
+            collection(db, "propuestas"), 
+            where("destacada", "==", true),
+            orderBy("fecha", "desc")
+          );
+          const snapshotDestacadas = await getDocs(qDestacadas);
+          const propuestasDestacadasData = snapshotDestacadas.docs.map(doc => {
+            try {
+              const data = doc.data();
+              return {
+                id: doc.id,
+                ...data,
+                fecha: data.fecha?.toDate?.() || new Date(),
+              };
+            } catch (err) {
+              console.error("Error processing document:", err);
+              return {
+                id: doc.id,
+                titulo: "Error al cargar propuesta",
+                descripcion: "",
+                categoria: "",
+                nombre: "",
+                fecha: new Date(),
+              };
+            }
+          }) as Propuesta[];
+          setPropuestasDestacadas(propuestasDestacadasData);
+        } catch (err) {
+          console.error("Error loading destacadas:", err);
+          setPropuestasDestacadas([]);
+        }
 
-        // Load recientes
-        const qRecientes = query(
-          collection(db, "propuestas"),
-          orderBy("fecha", "desc"),
-          where("destacada", "==", false)
-        );
-        const snapshotRecientes = await getDocs(qRecientes);
-        const propuestasRecientesData = snapshotRecientes.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          fecha: doc.data().fecha.toDate(),
-        })) as Propuesta[];
-        setPropuestasRecientes(propuestasRecientesData);
+        // Load recientes - with separate try/catch for better isolation
+        try {
+          const qRecientes = query(
+            collection(db, "propuestas"),
+            orderBy("fecha", "desc")
+          );
+          const snapshotRecientes = await getDocs(qRecientes);
+          const propuestasRecientesData = snapshotRecientes.docs
+            .filter(doc => !doc.data().destacada)
+            .map(doc => {
+              try {
+                const data = doc.data();
+                return {
+                  id: doc.id,
+                  ...data,
+                  fecha: data.fecha?.toDate?.() || new Date(),
+                  autor: data.nombre || "Anónimo",
+                  votos: data.votos || 0,
+                };
+              } catch (err) {
+                console.error("Error processing recent document:", err);
+                return {
+                  id: doc.id,
+                  titulo: "Error al cargar propuesta",
+                  descripcion: "",
+                  categoria: "",
+                  nombre: "",
+                  fecha: new Date(),
+                  autor: "Anónimo",
+                  votos: 0,
+                };
+              }
+            }) as Propuesta[];
+          setPropuestasRecientes(propuestasRecientesData);
+        } catch (err) {
+          console.error("Error loading recientes:", err);
+          setPropuestasRecientes([]);
+        }
       } catch (error) {
-        console.error("Error loading propuestas:", error);
-        setError("Error al cargar las propuestas");
+        console.error("Error in loadPropuestas:", error);
+        // Don't set error state here to allow UI to render with empty arrays
       } finally {
         setIsLoading(false);
       }
@@ -503,20 +566,25 @@ export default function PlataformaCiudadanaPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {propuestasDestacadas.map((propuesta) => (
-                    <div key={propuesta.id} className="border-b pb-4 last:border-0 last:pb-0">
-                      <h4 className="font-medium text-gray-900 mb-1">{propuesta.titulo}</h4>
-                      <div className="flex items-center gap-2 mb-2">
-                        <Badge variant="secondary">{propuesta.categoria}</Badge>
-                        <span className="text-sm text-gray-500">
-                          {propuesta.fecha.toLocaleDateString()}
-                        </span>
+                  {propuestasDestacadas && propuestasDestacadas.length > 0 ? 
+                    propuestasDestacadas.map((propuesta) => (
+                      <div key={propuesta.id} className="border-b pb-4 last:border-0 last:pb-0">
+                        <h4 className="font-medium text-gray-900 mb-1">{propuesta.titulo}</h4>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge variant="secondary">{propuesta.categoria || "General"}</Badge>
+                          <span className="text-sm text-gray-500">
+                            {propuesta.fecha ? 
+                              propuesta.fecha instanceof Date ? 
+                                propuesta.fecha.toLocaleDateString() : 
+                                "Fecha no disponible" : 
+                              "Fecha no disponible"
+                            }
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-600 line-clamp-2">{propuesta.descripcion || "Sin descripción"}</p>
+                        <p className="text-sm text-gray-500 mt-1">Por: {propuesta.nombre || "Anónimo"}</p>
                       </div>
-                      <p className="text-sm text-gray-600 line-clamp-2">{propuesta.descripcion}</p>
-                      <p className="text-sm text-gray-500 mt-1">Por: {propuesta.nombre}</p>
-                    </div>
-                  ))}
-                  {propuestasDestacadas.length === 0 && (
+                    )) : (
                     <p className="text-sm text-gray-500 text-center py-4">
                       No hay propuestas destacadas en este momento
                     </p>
@@ -532,24 +600,28 @@ export default function PlataformaCiudadanaPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {propuestasRecientes.map((prop, index) => (
+                  {propuestasRecientes && propuestasRecientes.length > 0 ? propuestasRecientes.map((prop, index) => (
                     <div key={index} className="border-b border-gray-200 pb-3 last:border-b-0">
-                      <h4 className="font-medium text-sm mb-1">{prop.titulo}</h4>
+                      <h4 className="font-medium text-sm mb-1">{prop.titulo || "Sin título"}</h4>
                       <div className="flex items-center justify-between text-xs text-gray-500">
-                        <span>por {prop.autor}</span>
-                        <span>{prop.fecha.toLocaleDateString()}</span>
+                        <span>por {prop.autor || prop.nombre || "Anónimo"}</span>
+                        <span>{prop.fecha instanceof Date ? prop.fecha.toLocaleDateString() : "Fecha no disponible"}</span>
                       </div>
                       <div className="flex items-center justify-between mt-2">
                         <Badge variant="outline" className="text-xs">
-                          {prop.categoria}
+                          {prop.categoria || "General"}
                         </Badge>
                         <div className="flex items-center gap-1 text-xs text-gray-500">
                           <ThumbsUp className="h-3 w-3" />
-                          {prop.votos}
+                          {typeof prop.votos === 'number' ? prop.votos : 0}
                         </div>
                       </div>
                     </div>
-                  ))}
+                  )) : (
+                    <p className="text-sm text-gray-500 text-center py-4">
+                      No hay propuestas recientes en este momento
+                    </p>
+                  )}
                 </div>
               </CardContent>
             </Card>
