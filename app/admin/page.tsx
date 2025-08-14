@@ -61,6 +61,12 @@ export default function AdminPage() {
   };
 
   const loadPropuestas = async () => {
+    if (!db) {
+      console.error("Firestore is not initialized");
+      setError("Error: Base de datos no inicializada");
+      return;
+    }
+
     try {
       const q = query(collection(db, "propuestas"), orderBy("fecha", "desc"));
       const querySnapshot = await getDocs(q);
@@ -71,28 +77,43 @@ export default function AdminPage() {
       })) as Propuesta[];
       setPropuestas(propuestasData);
     } catch (error) {
+      console.error("Error loading propuestas:", error);
       setError("Error al cargar las propuestas");
     }
   };
 
   const handleDelete = async (id: string) => {
+    if (!db) {
+      console.error("Firestore is not initialized");
+      setError("Error: Base de datos no inicializada");
+      return;
+    }
+
     if (window.confirm("¿Estás seguro de que deseas eliminar esta propuesta?")) {
       try {
         await deleteDoc(doc(db, "propuestas", id));
         await loadPropuestas();
       } catch (error) {
+        console.error("Error deleting propuesta:", error);
         setError("Error al eliminar la propuesta");
       }
     }
   };
 
   const handleToggleDestacada = async (id: string, destacada: boolean) => {
+    if (!db) {
+      console.error("Firestore is not initialized");
+      setError("Error: Base de datos no inicializada");
+      return;
+    }
+
     try {
       await updateDoc(doc(db, "propuestas", id), {
         destacada: !destacada
       });
       await loadPropuestas();
     } catch (error) {
+      console.error("Error updating propuesta:", error);
       setError("Error al actualizar la propuesta");
     }
   };

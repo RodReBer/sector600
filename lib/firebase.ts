@@ -1,41 +1,33 @@
-import { initializeApp, getApps } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
-import { getAuth } from "firebase/auth";
-import { getAnalytics } from "firebase/analytics";
+import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
+import { getFirestore, type Firestore } from "firebase/firestore";
+import { getAuth, type Auth } from "firebase/auth";
+import { getAnalytics, type Analytics } from "firebase/analytics";
 
 // Provide a default config for SSR
 const defaultConfig = {
-  apiKey: "dummy-key-for-ssr",
-  authDomain: "dummy-domain",
-  projectId: "dummy-project",
-  storageBucket: "dummy-bucket",
-  messagingSenderId: "dummy-sender",
-  appId: "dummy-app-id",
-  measurementId: "dummy-measure-id",
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "dummy-key-for-ssr",
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "dummy-domain",
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "dummy-project",
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "dummy-bucket",
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "dummy-sender",
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "dummy-app-id",
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || "dummy-measure-id",
 };
 
-const firebaseConfig = typeof window !== 'undefined' 
-  ? {
-      apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-      authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-      storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-      messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-      appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-      measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
-    }
-  : defaultConfig;
-
-// Initialize Firebase
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-
-// Only initialize services on the client side
-let db, auth, analytics;
+let app: FirebaseApp;
+let db: Firestore | null = null;
+let auth: Auth | null = null;
+let analytics: Analytics | null = null;
 
 if (typeof window !== "undefined") {
-  db = getFirestore(app);
-  auth = getAuth(app);
-  analytics = getAnalytics(app);
+  try {
+    app = getApps().length === 0 ? initializeApp(defaultConfig) : getApps()[0];
+    db = getFirestore(app);
+    auth = getAuth(app);
+    analytics = getAnalytics(app);
+  } catch (error) {
+    console.error("Firebase initialization error:", error);
+  }
 }
 
 export { app, db, auth, analytics };
