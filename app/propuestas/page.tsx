@@ -2,12 +2,16 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { collection, query, orderBy, getDocs } from "firebase/firestore";
+import { collection, query, orderBy, getDocs, addDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Lightbulb, TrendingUp, MapPin } from "lucide-react";
+import { Lightbulb, TrendingUp, MapPin, ChartBar } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select } from "@/components/ui/select";
 
 interface Propuesta {
   id: string;
@@ -37,6 +41,15 @@ export default function PropuestasPage() {
   const [departmentStats, setDepartmentStats] = useState<DepartmentStat[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [formData, setFormData] = useState({
+    titulo: "",
+    descripcion: "",
+    categoria: "",
+    departamento: "",
+    nombre: "",
+    justificacion: "",
+    beneficiarios: "",
+  });
 
   useEffect(() => {
     const loadPropuestas = async () => {

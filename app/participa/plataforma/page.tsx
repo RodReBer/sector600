@@ -430,7 +430,34 @@ export default function PlataformaCiudadanaPage() {
               </CardContent>
             </Card>
 
-            {/* Aquí puedes agregar otra sección si lo deseas, o dejar solo las destacadas */}
+            {/* Cómo funciona */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Propuestas Recientes</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {propuestasRecientes.map((prop, index) => (
+                    <div key={index} className="border-b border-gray-200 pb-3 last:border-b-0">
+                      <h4 className="font-medium text-sm mb-1">{prop.titulo}</h4>
+                      <div className="flex items-center justify-between text-xs text-gray-500">
+                        <span>por {prop.autor}</span>
+                        <span>{prop.fecha}</span>
+                      </div>
+                      <div className="flex items-center justify-between mt-2">
+                        <Badge variant="outline" className="text-xs">
+                          {prop.categoria}
+                        </Badge>
+                        <div className="flex items-center gap-1 text-xs text-gray-500">
+                          <ThumbsUp className="h-3 w-3" />
+                          {prop.votos}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Contacto */}
             <Card>
