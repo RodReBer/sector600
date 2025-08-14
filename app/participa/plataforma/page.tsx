@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { collection, addDoc, query, orderBy, getDocs, where } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { db as firestore } from "@/lib/firebase";
+import type { Firestore } from 'firebase/firestore';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -38,6 +39,8 @@ interface Propuesta {
   nombre: string;
   fecha: Date;
   destacada?: boolean;
+  autor?: string;
+  votos?: number;
 }
 
 export default function PlataformaCiudadanaPage() {
@@ -58,29 +61,54 @@ export default function PlataformaCiudadanaPage() {
   const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [propuestasDestacadas, setPropuestasDestacadas] = useState<Propuesta[]>([]);
+  const [propuestasRecientes, setPropuestasRecientes] = useState<Propuesta[]>([]);
+  const [db, setDb] = useState<Firestore | null>(null);
   const router = useRouter();
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setDb(firestore);
+    }
+  }, []);
   
   useEffect(() => {
-    const loadPropuestasDestacadas = async () => {
+    const loadPropuestas = async () => {
+      if (typeof window === "undefined" || !db) return; // Exit if SSR or db not initialized
       try {
-        const q = query(
+        // Load destacadas
+        const qDestacadas = query(
           collection(db, "propuestas"), 
           where("destacada", "==", true),
           orderBy("fecha", "desc")
         );
-        const querySnapshot = await getDocs(q);
-        const propuestasData = querySnapshot.docs.map(doc => ({
+        const snapshotDestacadas = await getDocs(qDestacadas);
+        const propuestasDestacadasData = snapshotDestacadas.docs.map(doc => ({
           id: doc.id,
           ...doc.data(),
           fecha: doc.data().fecha.toDate(),
         })) as Propuesta[];
-        setPropuestasDestacadas(propuestasData);
+        setPropuestasDestacadas(propuestasDestacadasData);
+
+        // Load recientes
+        const qRecientes = query(
+          collection(db, "propuestas"),
+          orderBy("fecha", "desc"),
+          // Limit to 5 most recent
+          where("destacada", "==", false)
+        );
+        const snapshotRecientes = await getDocs(qRecientes);
+        const propuestasRecientesData = snapshotRecientes.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          fecha: doc.data().fecha.toDate(),
+        })) as Propuesta[];
+        setPropuestasRecientes(propuestasRecientesData);
       } catch (error) {
-        console.error("Error loading propuestas destacadas:", error);
+        console.error("Error loading propuestas:", error);
       }
     };
 
-    loadPropuestasDestacadas();
+    loadPropuestas();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -442,7 +470,7 @@ export default function PlataformaCiudadanaPage() {
                       <h4 className="font-medium text-sm mb-1">{prop.titulo}</h4>
                       <div className="flex items-center justify-between text-xs text-gray-500">
                         <span>por {prop.autor}</span>
-                        <span>{prop.fecha}</span>
+                        <span>{prop.fecha.toLocaleDateString()}</span>
                       </div>
                       <div className="flex items-center justify-between mt-2">
                         <Badge variant="outline" className="text-xs">
