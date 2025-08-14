@@ -44,6 +44,16 @@ interface Propuesta {
 }
 
 export default function PlataformaCiudadanaPage() {
+  // State management
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string>("");
+  const [success, setSuccess] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [propuestasDestacadas, setPropuestasDestacadas] = useState<Propuesta[]>([]);
+  const [propuestasRecientes, setPropuestasRecientes] = useState<Propuesta[]>([]);
+  const [db, setDb] = useState<Firestore | null>(null);
+  const router = useRouter();
+
   const [formData, setFormData] = useState({
     titulo: "",
     categoria: "",
@@ -57,24 +67,36 @@ export default function PlataformaCiudadanaPage() {
     telefono: "",
   });
 
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [propuestasDestacadas, setPropuestasDestacadas] = useState<Propuesta[]>([]);
-  const [propuestasRecientes, setPropuestasRecientes] = useState<Propuesta[]>([]);
-  const [db, setDb] = useState<Firestore | null>(null);
-  const router = useRouter();
-
+  // Initialize Firestore
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    const initializeFirestore = async () => {
+      if (typeof window === 'undefined') return;
+
+      if (!firestore) {
+        console.error('Firestore is not initialized. Check your Firebase configuration.');
+        setError('Error de conexión con la base de datos. Por favor, inténtelo más tarde.');
+        setIsLoading(false);
+        return;
+      }
+
       setDb(firestore);
-    }
+      setIsLoading(false);
+    };
+
+    initializeFirestore();
   }, []);
   
   useEffect(() => {
     const loadPropuestas = async () => {
-      if (typeof window === "undefined" || !db) return; // Exit if SSR or db not initialized
+      if (!db) {
+        console.error("Firestore is not initialized");
+        setError("Error: Base de datos no inicializada");
+        setIsLoading(false);
+        return;
+      }
+
       try {
+        setIsLoading(true);
         // Load destacadas
         const qDestacadas = query(
           collection(db, "propuestas"), 
@@ -93,7 +115,6 @@ export default function PlataformaCiudadanaPage() {
         const qRecientes = query(
           collection(db, "propuestas"),
           orderBy("fecha", "desc"),
-          // Limit to 5 most recent
           where("destacada", "==", false)
         );
         const snapshotRecientes = await getDocs(qRecientes);
@@ -105,16 +126,27 @@ export default function PlataformaCiudadanaPage() {
         setPropuestasRecientes(propuestasRecientesData);
       } catch (error) {
         console.error("Error loading propuestas:", error);
+        setError("Error al cargar las propuestas");
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    loadPropuestas();
+    if (db) {
+      loadPropuestas();
+    }
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     setError("");
+
+    if (!db) {
+      setError("Error: Base de datos no inicializada");
+      setSubmitting(false);
+      return;
+    }
 
     try {
       await addDoc(collection(db, "propuestas"), {
@@ -157,6 +189,41 @@ export default function PlataformaCiudadanaPage() {
       setSubmitting(false);
     }
   };
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 pt-20">
+        <div className="container mx-auto px-4 py-12">
+          <Alert variant="destructive" className="mb-4">
+            <p>{error}</p>
+            <Button 
+              variant="outline" 
+              className="mt-2"
+              onClick={() => window.location.reload()}
+            >
+              Reintentar
+            </Button>
+          </Alert>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 pt-20">
+        <div className="container mx-auto px-4 py-12 flex justify-center">
+          <div className="animate-pulse space-y-4">
+            <div className="h-4 bg-gray-200 rounded w-32"></div>
+            <div className="h-8 bg-gray-200 rounded w-64"></div>
+            <div className="h-4 bg-gray-200 rounded w-48"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 pt-20">
